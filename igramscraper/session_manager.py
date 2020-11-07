@@ -8,7 +8,7 @@ class CookieSessionManager:
 
     def get_saved_cookies(self):
         try:
-            f = open(self.session_folder + self.filename, 'r') 
+            f = open(self.session_folder + self.filename, 'r')
             return f.read()
         except FileNotFoundError:
             return None
@@ -18,6 +18,14 @@ class CookieSessionManager:
             os.makedirs(self.session_folder)
 
         with open(self.session_folder + self.filename,"w+") as f:
+            f.write(cookie_string)
+
+    def update_cookies(self, cookie_string):
+        try:
+            os.remove(self.session_folder + self.filename)
+        except FileNotFoundError:
+            pass
+        with open(self.session_folder + self.filename, "w+") as f:
             f.write(cookie_string)
 
     def empty_saved_cookies(self):

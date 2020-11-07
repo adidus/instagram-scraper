@@ -79,7 +79,6 @@ class Instagram:
         else:
             Instagram.instance_cache = session_folder
 
-        Instagram.instance_cache.empty_saved_cookies()
 
 
         self.session_username = username
@@ -1412,31 +1411,27 @@ class Instagram:
         if session is None or 'sessionid' not in session.keys():
             return False
 
-
-        session_id = session['sessionid']
-        csrf_token = session['csrftoken']
+        cookie_string = 'ig_cb=1;'
+        for key in session.keys():
+            cookie_string += f'{key}={session[key]};'
 
         headers = {
-            'cookie': f"ig_cb=1; csrftoken={csrf_token}; sessionid={session_id};",
+            'cookie': cookie_string,
             'referer': endpoints.BASE_URL + '/',
-            'x-csrftoken': csrf_token,
-            'X-CSRFToken': csrf_token,
+            'x-csrftoken': session['csrftoken'],
+            'X-CSRFToken': session['csrftoken'],
             'user-agent': self.user_agent,
         }
 
         time.sleep(self.sleep_between_requests)
         response = self.__req.get(endpoints.BASE_URL, headers=headers)
-        test=response.status_code
-        test2=Instagram.HTTP_OK
 
         if not response.status_code == Instagram.HTTP_OK:
             return False
 
         cookies = response.cookies.get_dict()
-
-
-        if cookies is None or not 'ds_user_id' in cookies.keys():
-            return False
+        cookies['mid'] = self.__get_mid()
+        self.user_session = cookies
 
         return True
 
@@ -1512,8 +1507,12 @@ class Instagram:
 
             self.user_session = cookies
 
-        else:
-            self.user_session = session
+        Instagram.instance_cache.update_cookies(
+            json.dumps(
+                self.user_session,
+                separators=(',', ':')
+            )
+        )
 
         return self.generate_headers(self.user_session)
 
