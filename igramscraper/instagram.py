@@ -293,8 +293,57 @@ class Instagram:
         :param maxId: used to paginate
         :return: list of Media
         """
-        account = self.get_account(username)
-        return self.get_medias_by_user_id(account.identifier, count, maxId)
+        if self.user_session:
+            account = self.get_account(username)
+            posts = self.get_medias_by_user_id(account.identifier, count, maxId)
+        else:
+            posts = self.get_medias_public(username)
+
+        return posts
+
+    def get_medias_public(self, username: str):
+        response = requests.get(
+            f"https://www.instagram.com/{username}/?__a=1"
+        )
+        medias = []
+        if response.status_code == Instagram.HTTP_OK:
+            posts = response.json()
+            try:
+                nodes = posts[
+                    'graphql'][
+                    'user'][
+                    'edge_owner_to_timeline_media'][
+                    'edges'
+                ]
+            except KeyError:
+                return {}
+
+            for mediaArray in nodes:
+                mediaArray['node']['owner']['username'] = posts['graphql']['user'][
+                    'username']
+                mediaArray['node']['owner']['biography'] = posts['graphql']['user'][
+                    'biography']
+                mediaArray['node']['owner']['full_name'] = posts['graphql']['user'][
+                    'full_name']
+                text = mediaArray['node']['edge_media_to_caption']['edges'][0][
+                    'node']['text'] if mediaArray['node'][
+                    'edge_media_to_caption']['edges'] else ""
+                caption = mediaArray['node']['accessibility_caption'] if mediaArray['node'][
+                    'accessibility_caption'] else ""
+
+                if caption:
+                    text += '\n' + caption
+
+                mediaArray['node']['edge_media_to_caption']['edges'] = [
+                    {
+                        "node": dict(text=text)
+                    }
+                ]
+
+                media = Media(mediaArray['node'])
+                medias.append(media)
+        return medias
+
 
     def get_medias_by_code(self, media_code):
         """
@@ -1237,25 +1286,37 @@ class Instagram:
         :return: Account
         """
         time.sleep(self.sleep_between_requests)
-        response = self.__req.get(endpoints.get_account_page_link(
-            username), headers=self.generate_headers(self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
-                'Account with given username does not exist.')
+        if self.user_session:
+            response = self.__req.get(endpoints.get_account_page_link(
+                username), headers=self.generate_headers(self.user_session))
 
-        if Instagram.HTTP_OK != response.status_code:
-            raise InstagramException.default(response.text,
-                                             response.status_code)
 
-        user_array = Instagram.extract_shared_data_from_body(response.text)
+            if Instagram.HTTP_NOT_FOUND == response.status_code:
+                raise InstagramNotFoundException(
+                    'Account with given username does not exist.')
 
-        if user_array['entry_data']['ProfilePage'][0]['graphql']['user'] is None:
-            raise InstagramNotFoundException(
-                'Account with this username does not exist')
+            if Instagram.HTTP_OK != response.status_code:
+                raise InstagramException.default(response.text,
+                                                 response.status_code)
 
-        return Account(
-            user_array['entry_data']['ProfilePage'][0]['graphql']['user'])
+            user_array = Instagram.extract_shared_data_from_body(response.text)
+
+            if user_array['entry_data']['ProfilePage'][0]['graphql']['user'] is None:
+                raise InstagramNotFoundException(
+                    'Account with this username does not exist')
+
+            user_array = user_array['entry_data']['ProfilePage'][0]['graphql']['user']
+
+        else:
+            response = requests.get(
+                endpoints.get_account_page_link(username) + '/?__a=1'
+
+            )
+
+            user_array = response.json()['graphql']['user']
+
+        return Account(user_array)
 
     def get_stories(self, reel_ids=None):
         """
@@ -1478,6 +1539,8 @@ class Instagram:
                        'enc_password': f"#PWD_INSTAGRAM_BROWSER:0:{int(time.time())}:{self.session_password}"}
             response = self.__req.post(endpoints.LOGIN_URL, data=payload,
                                        headers=headers)
+            print(response.text)
+            time.sleep(15)
 
             if not response.status_code == Instagram.HTTP_OK:
                 if (
@@ -1487,6 +1550,7 @@ class Instagram:
                         and two_step_verificator is not None):
                     response = self.__verify_two_step(response, cookies,
                                                       two_step_verificator)
+
                     print('checkpoint required')
 
                 elif response.status_code is not None and response.text is not None:
