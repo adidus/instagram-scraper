@@ -36,7 +36,7 @@ class Instagram:
 
     instance_cache = None
 
-    def __init__(self, sleep_between_requests=0):
+    def __init__(self, sleep_between_requests=2):
         self.__req = requests.session()
         self.paging_time_limit_sec = Instagram.PAGING_TIME_LIMIT_SEC
         self.paging_delay_minimum_microsec = Instagram.PAGING_DELAY_MINIMUM_MICROSEC
@@ -56,6 +56,9 @@ class Instagram:
         cookie = requests.utils.dict_from_cookiejar(cj)
         self.cookie=cookie
         self.user_session = cookie
+
+    def set_user_agent(self, user_agent):
+        self.user_agent = user_agent
 
     def with_credentials(self, username, password, session_folder=None):
         """
@@ -85,6 +88,7 @@ class Instagram:
         self.session_password = password
 
     def set_proxies(self, proxy):
+        self.proxy = proxy
         if proxy and isinstance(proxy, dict):
             self.__req.proxies = proxy
 
@@ -293,17 +297,15 @@ class Instagram:
         :param maxId: used to paginate
         :return: list of Media
         """
-        if self.user_session:
-            account = self.get_account(username)
-            posts = self.get_medias_by_user_id(account.identifier, count, maxId)
-        else:
-            posts = self.get_medias_public(username)
+        account = self.get_account(username)
+        posts = self.get_medias_by_user_id(account.identifier, count, maxId)
 
         return posts
 
     def get_medias_public(self, username: str):
         response = requests.get(
-            f"https://www.instagram.com/{username}/?__a=1"
+            url=f"https://www.instagram.com/{username}/?__a=1",
+            proxies=self.proxy
         )
         medias = []
         if response.status_code == Instagram.HTTP_OK:
@@ -1287,34 +1289,28 @@ class Instagram:
         """
         time.sleep(self.sleep_between_requests)
 
-        if self.user_session:
-            response = self.__req.get(endpoints.get_account_page_link(
-                username), headers=self.generate_headers(self.user_session))
+        response = self.__req.get(endpoints.get_account_page_link(
+            username), headers=self.generate_headers(self.user_session))
+
+        res = response.json()
 
 
-            if Instagram.HTTP_NOT_FOUND == response.status_code:
-                raise InstagramNotFoundException(
-                    'Account with given username does not exist.')
+        if Instagram.HTTP_NOT_FOUND == response.status_code:
+            raise InstagramNotFoundException(
+                'Account with given username does not exist.')
 
-            if Instagram.HTTP_OK != response.status_code:
-                raise InstagramException.default(response.text,
-                                                 response.status_code)
+        if Instagram.HTTP_OK != response.status_code:
+            raise InstagramException.default(response.text,
+                                             response.status_code)
 
-            user_array = Instagram.extract_shared_data_from_body(response.text)
+        user_array = Instagram.extract_shared_data_from_body(response.text)
 
-            if user_array['entry_data']['ProfilePage'][0]['graphql']['user'] is None:
-                raise InstagramNotFoundException(
-                    'Account with this username does not exist')
+        if user_array['entry_data']['ProfilePage'][0]['graphql']['user'] is None:
+            raise InstagramNotFoundException(
+                'Account with this username does not exist')
 
-            user_array = user_array['entry_data']['ProfilePage'][0]['graphql']['user']
+        user_array = user_array['entry_data']['ProfilePage'][0]['graphql']['user']
 
-        else:
-            response = requests.get(
-                endpoints.get_account_page_link(username) + '/?__a=1'
-
-            )
-
-            user_array = response.json()['graphql']['user']
 
         return Account(user_array)
 
