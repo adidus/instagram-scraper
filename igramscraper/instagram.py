@@ -1288,12 +1288,8 @@ class Instagram:
         :return: Account
         """
         time.sleep(self.sleep_between_requests)
-
         response = self.__req.get(endpoints.get_account_page_link(
             username), headers=self.generate_headers(self.user_session))
-
-        res = response.json()
-
 
         if Instagram.HTTP_NOT_FOUND == response.status_code:
             raise InstagramNotFoundException(
@@ -1309,10 +1305,8 @@ class Instagram:
             raise InstagramNotFoundException(
                 'Account with this username does not exist')
 
-        user_array = user_array['entry_data']['ProfilePage'][0]['graphql']['user']
-
-
-        return Account(user_array)
+        return Account(
+            user_array['entry_data']['ProfilePage'][0]['graphql']['user'])
 
     def get_stories(self, reel_ids=None):
         """
@@ -1468,15 +1462,15 @@ class Instagram:
         if session is None or 'sessionid' not in session.keys():
             return False
 
-        cookie_string = 'ig_cb=1;'
-        for key in session.keys():
-            cookie_string += f'{key}={session[key]};'
+
+        session_id = session['sessionid']
+        csrf_token = session['csrftoken']
 
         headers = {
-            'cookie': cookie_string,
+            'cookie': f"ig_cb=1; csrftoken={csrf_token}; sessionid={session_id};",
             'referer': endpoints.BASE_URL + '/',
-            'x-csrftoken': session['csrftoken'],
-            'X-CSRFToken': session['csrftoken'],
+            'x-csrftoken': csrf_token,
+            'X-CSRFToken': csrf_token,
             'user-agent': self.user_agent,
         }
 
@@ -1487,8 +1481,10 @@ class Instagram:
             return False
 
         cookies = response.cookies.get_dict()
-        cookies['mid'] = self.__get_mid()
-        self.user_session = cookies
+
+
+        if cookies is None or not 'ds_user_id' in cookies.keys():
+            return False
 
         return True
 
@@ -1567,12 +1563,8 @@ class Instagram:
 
             self.user_session = cookies
 
-        Instagram.instance_cache.update_cookies(
-            json.dumps(
-                self.user_session,
-                separators=(',', ':')
-            )
-        )
+        else:
+            self.user_session = session
 
         return self.generate_headers(self.user_session)
 
