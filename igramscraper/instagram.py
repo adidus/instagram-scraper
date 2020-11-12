@@ -303,9 +303,8 @@ class Instagram:
         return posts
 
     def get_medias_public(self, username: str):
-        response = requests.get(
-            url=f"https://www.instagram.com/{username}/?__a=1",
-            proxies=self.proxy
+        response = self.__req.get(
+            url=f"https://www.instagram.com/{username}/?__a=1"
         )
         medias = []
         if response.status_code == Instagram.HTTP_OK:
