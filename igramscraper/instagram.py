@@ -1558,7 +1558,7 @@ class Instagram:
                     raise InstagramAuthException(
                         'Something went wrong. Please report issue.',
                         response.status_code)
-            elif not response.json().get('authenticated') and response.json().get('message') == 'checkpoint_required':
+            elif not response.json().get('authenticated') and response.json().get('message') != 'checkpoint_required':
                 raise InstagramAuthException('User credentials are wrong.')
 
             cookies = response.cookies.get_dict()
