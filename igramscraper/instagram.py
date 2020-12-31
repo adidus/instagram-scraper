@@ -1558,7 +1558,7 @@ class Instagram:
                     raise InstagramAuthException(
                         'Something went wrong. Please report issue.',
                         response.status_code)
-            elif not response.json()['authenticated']:
+            elif not response.json().get('authenticated'):
                 raise InstagramAuthException('User credentials are wrong.')
 
             cookies = response.cookies.get_dict()
