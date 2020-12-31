@@ -1504,7 +1504,10 @@ class Instagram:
 
         if force or not self.is_logged_in(session):
             time.sleep(self.sleep_between_requests)
-            response = self.__req.get(endpoints.BASE_URL)
+            response = self.__req.get(
+                url=endpoints.BASE_URL,
+                headers=self.generate_headers(self.user_session)
+            )
             if not response.status_code == Instagram.HTTP_OK:
                 raise InstagramException.default(response.text,
                                                  response.status_code)
