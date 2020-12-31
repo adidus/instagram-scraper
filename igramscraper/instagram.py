@@ -1539,7 +1539,7 @@ class Instagram:
             print(response.text)
             time.sleep(55)
 
-            if not response.status_code == Instagram.HTTP_OK:
+            if not response.status_code == Instagram.HTTP_OK and response.status_code != 400:
                 if (
                         response.status_code == Instagram.HTTP_BAD_REQUEST
                         and response.text is not None
