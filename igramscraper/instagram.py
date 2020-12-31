@@ -1537,7 +1537,7 @@ class Instagram:
             response = self.__req.post(endpoints.LOGIN_URL, data=payload,
                                        headers=headers)
             print(response.text)
-            time.sleep(15)
+            time.sleep(55)
 
             if not response.status_code == Instagram.HTTP_OK:
                 if (
