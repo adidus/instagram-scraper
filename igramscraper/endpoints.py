@@ -5,7 +5,7 @@ USER_MEDIAS = '17880160963012870'
 USER_STORIES = '17890626976041463'
 STORIES = '17873473675158481'
 
-BASE_URL = 'http://www.instagram.com'
+BASE_URL = 'https://www.instagram.com'
 LOGIN_URL = 'https://www.instagram.com/accounts/login/ajax/'
 ACCOUNT_PAGE = 'https://www.instagram.com/%s'
 MEDIA_LINK = 'https://www.instagram.com/p/%s'
